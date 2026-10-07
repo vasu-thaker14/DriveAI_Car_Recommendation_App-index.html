@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DriveAI — Car Recommendation System</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:Inter,Arial,sans-serif;background:#0b1020;color:#f5f7ff;min-height:100vh}
+header{padding:24px 7%;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #252c42;background:#0d1326}
+.logo{font-size:25px;font-weight:800}.logo span{color:#61dafb}
+.badge{padding:8px 14px;border:1px solid #33405e;border-radius:20px;color:#aeb9d5;font-size:13px}
+.hero{padding:55px 7% 35px;text-align:center;background:radial-gradient(circle at top,#19284d 0,#0b1020 55%)}
+.hero h1{font-size:clamp(32px,5vw,58px);margin-bottom:12px}.hero h1 span{color:#61dafb}
+.hero p{color:#aeb9d5;font-size:17px;max-width:700px;margin:auto;line-height:1.6}
+.container{width:min(1100px,92%);margin:30px auto 60px}
+.panel{background:#11182c;border:1px solid #27314b;border-radius:20px;padding:26px;box-shadow:0 15px 40px #0005}
+.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:20px}
+label{display:block;font-weight:700;margin-bottom:9px;color:#dce4f8}
+select,input{width:100%;padding:14px 15px;border-radius:11px;border:1px solid #36415e;background:#0b1121;color:#fff;font-size:15px;outline:none}
+select:focus,input:focus{border-color:#61dafb}
+.full{grid-column:1/-1}
+button{width:100%;margin-top:23px;padding:15px;border:0;border-radius:12px;background:linear-gradient(90deg,#2da8ff,#7c5cff);color:white;font-size:17px;font-weight:800;cursor:pointer}
+button:hover{filter:brightness(1.1);transform:translateY(-1px)}
+#results{display:none;margin-top:28px}
+.result-head{display:flex;justify-content:space-between;gap:15px;align-items:center;margin-bottom:18px}
+.result-head h2{font-size:25px}.count{color:#9faccc}
+.cards{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}
+.card{background:#151e34;border:1px solid #2b3753;border-radius:16px;padding:20px;position:relative}
+.card.best{border-color:#61dafb;box-shadow:0 0 0 1px #61dafb33}
+.best-tag{position:absolute;right:14px;top:14px;background:#173b48;color:#6ce4ff;padding:6px 9px;border-radius:15px;font-size:11px;font-weight:800}
+.car-icon{font-size:42px;margin-bottom:12px}.card h3{font-size:20px;margin-bottom:5px}.muted{color:#99a7c5;font-size:13px}
+.score{margin:15px 0}.bar{height:8px;background:#29344d;border-radius:10px;overflow:hidden}.fill{height:100%;background:linear-gradient(90deg,#61dafb,#7c5cff);border-radius:10px}
+.scoreline{display:flex;justify-content:space-between;font-size:13px;margin-bottom:7px}
+.specs{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:15px}.spec{background:#0d1427;padding:9px;border-radius:9px;font-size:12px;color:#b8c3db}
+.reason{margin-top:14px;color:#dce4f8;font-size:13px;line-height:1.5}
+footer{text-align:center;color:#71809f;font-size:12px;padding:25px}
+@media(max-width:800px){.grid,.cards{grid-template-columns:1fr}.full{grid-column:auto}.result-head{flex-direction:column;align-items:flex-start}}
+</style>
+</head>
+<body>
+<header><div class="logo">Drive<span>AI</span> 🚗</div><div class="badge">AI Car Recommendation System</div></header>
+
+<section class="hero"><p style="font-size:20px;font-weight:800;color:#61dafb;margin-bottom:18px;">Hello everyone, my name is Vasu Thaker</p>
+<h1>Find Your <span>Perfect Car</span></h1>
+<p>Choose your requirements. DriveAI compares them against a database of 100+ cars, from affordable hatchbacks to premium and ultra-luxury vehicles.</p>
+</section>
+
+<main class="container">
+<div class="panel">
+<div class="grid">
+<div>
+<label for="budget">Maximum Budget (₹ lakh)</label>
+<input id="budget" type="number" min="3" max="1000" value="12" step="0.5">
+</div>
+<div>
+<label for="fuel">Preferred Fuel</label>
+<select id="fuel"><option value="Any">Any</option><option>Petrol</option><option>Diesel</option><option>CNG</option><option>Electric</option><option>Hybrid</option></select>
+</div>
+<div>
+<label for="type">Car Type</label>
+<select id="type"><option value="Any">Any</option><option>Hatchback</option><option>Sedan</option><option>SUV</option><option>MPV</option></select>
+</div>
+<div>
+<label for="priority">Main Priority</label>
+<select id="priority"><option value="Mileage">Mileage</option><option value="Performance">Performance</option><option value="Safety">Safety</option><option value="Features">Features</option></select>
+</div>
+<div class="full">
+<label for="people">Number of Passengers</label>
+<select id="people"><option value="2">1–2 people</option><option value="4">3–4 people</option><option value="5" selected>5 people</option><option value="7">6–7 people</option></select>
+</div>
+</div>
+<button onclick="recommend()">✨ Find My Best Cars</button>
+</div>
+
+<section id="results">
+<div class="result-head"><h2>Recommended Cars</h2><div class="count" id="count"></div></div>
+<div class="cards" id="cards"></div>
+</section>
+</main>
+<footer>Educational AI project • 100+ car database • Recommendation scores are illustrative and not professional buying advice.</footer>
+
+<script>
+const cars=[
+{name:"Tata Punch",price:6.2,fuel:"Petrol",type:"SUV",seats:5,mileage:19,performance:6,safety:9,features:7},
+{name:"Maruti Suzuki Swift",price:6.5,fuel:"Petrol",type:"Hatchback",seats:5,mileage:22.4,performance:7,safety:7,features:7},
+{name:"Hyundai Exter",price:6.1,fuel:"Petrol",type:"SUV",seats:5,mileage:19.4,performance:6,safety:8,features:8},
+{name:"Maruti Suzuki Dzire",price:6.8,fuel:"CNG",type:"Sedan",seats:5,mileage:26,performance:6,safety:8,features:7},
+{name:"Honda Amaze",price:8,fuel:"Petrol",type:"Sedan",seats:5,mileage:18.6,performance:7,safety:8,features:7},
+{name:"Hyundai i20",price:7.2,fuel:"Petrol",type:"Hatchback",seats:5,mileage:20,performance:8,safety:8,features:9},
+{name:"Tata Nexon",price:8.2,fuel:"Petrol",type:"SUV",seats:5,mileage:17.4,performance:8,safety:9,features:9},
+{name:"Kia Sonet",price:8,fuel:"Petrol",type:"SUV",seats:5,mileage:19,performance:8,safety:8,features:9},
+{name:"Hyundai Venue",price:8,fuel:"Petrol",type:"SUV",seats:5,mileage:18.5,performance:8,safety:8,features:9},
+{name:"Maruti Ertiga",price:9,fuel:"CNG",type:"MPV",seats:7,mileage:26.1,performance:6,safety:7,features:7},
+{name:"Mahindra XUV 3XO",price:8,fuel:"Petrol",type:"SUV",seats:5,mileage:18.2,performance:9,safety:9,features:9},
+{name:"Tata Curvv EV",price:18,fuel:"Electric",type:"SUV",seats:5,mileage:450,performance:9,safety:9,features:9},
+{name:"MG Windsor EV",price:15,fuel:"Electric",type:"SUV",seats:5,mileage:330,performance:7,safety:8,features:9},
+{name:"Hyundai Creta",price:11,fuel:"Petrol",type:"SUV",seats:5,mileage:18,performance:8,safety:9,features:9},
+{name:"Kia Carens",price:10.6,fuel:"Petrol",type:"MPV",seats:7,mileage:16.5,performance:7,safety:8,features:9},
+{name:"Mahindra Scorpio-N",price:14,fuel:"Diesel",type:"SUV",seats:7,mileage:15,performance:9,safety:9,features:8},
+{name:"Toyota Innova HyCross",price:19,fuel:"Petrol",type:"MPV",seats:7,mileage:16.1,performance:8,safety:9,features:9},
+{name:"Skoda Slavia",price:10.5,fuel:"Petrol",type:"Sedan",seats:5,mileage:19,performance:9,safety:9,features:9},
+{name:"Toyota Fortuner",price:34,fuel:"Diesel",type:"SUV",seats:7,mileage:14.4,performance:9,safety:9,features:8},
+{name:"Jeep Meridian",price:31,fuel:"Diesel",type:"SUV",seats:7,mileage:16.2,performance:8,safety:9,features:9},
+{name:"Volkswagen Taigun",price:12,fuel:"Petrol",type:"SUV",seats:5,mileage:19,performance:9,safety:9,features:9},
+{name:"Skoda Kushaq",price:11.5,fuel:"Petrol",type:"SUV",seats:5,mileage:18.6,performance:8,safety:9,features:9},
+{name:"Hyundai Alcazar",price:14,fuel:"Petrol",type:"SUV",seats:7,mileage:17,performance:8,safety:9,features:9},
+{name:"Kia Seltos",price:11,fuel:"Petrol",type:"SUV",seats:5,mileage:17.5,performance:8,safety:9,features:9},
+{name:"MG Hector",price:14,fuel:"Petrol",type:"SUV",seats:5,mileage:15.5,performance:7,safety:8,features:10},
+{name:"Honda Elevate",price:11,fuel:"Petrol",type:"SUV",seats:5,mileage:16.9,performance:7,safety:9,features:8},
+{name:"Citroen C3",price:6.2,fuel:"Petrol",type:"Hatchback",seats:5,mileage:19,performance:6,safety:7,features:7},
+{name:"Citroen C3 Aircross",price:9.5,fuel:"Petrol",type:"SUV",seats:7,mileage:18,performance:7,safety:8,features:8},
+{name:"Toyota Glanza",price:6.8,fuel:"Petrol",type:"Hatchback",seats:5,mileage:22,performance:7,safety:8,features:7},
+{name:"Renault Kiger",price:6.2,fuel:"Petrol",type:"SUV",seats:5,mileage:19,performance:7,safety:8,features:8},
+{name:"Nissan Magnite",price:6,fuel:"Petrol",type:"SUV",seats:5,mileage:19,performance:7,safety:8,features:8},
+{name:"Maruti Brezza",price:8.5,fuel:"CNG",type:"SUV",seats:5,mileage:25.5,performance:7,safety:8,features:8},
+{name:"Maruti Grand Vitara",price:11,fuel:"Hybrid",type:"SUV",seats:5,mileage:27.9,performance:7,safety:9,features:9},
+{name:"Toyota Urban Cruiser Hyryder",price:11.1,fuel:"Hybrid",type:"SUV",seats:5,mileage:27.9,performance:7,safety:9,features:9},
+{name:"Mahindra Thar",price:11,fuel:"Petrol",type:"SUV",seats:4,mileage:15.2,performance:9,safety:8,features:7},
+{name:"Mahindra XUV700",price:14,fuel:"Petrol",type:"SUV",seats:7,mileage:16.5,performance:9,safety:9,features:10},
+{name:"Tata Harrier",price:15,fuel:"Diesel",type:"SUV",seats:5,mileage:16.8,performance:8,safety:10,features:9},
+{name:"Tata Safari",price:16,fuel:"Diesel",type:"SUV",seats:7,mileage:16.3,performance:8,safety:10,features:9},
+{name:"Jeep Compass",price:20,fuel:"Diesel",type:"SUV",seats:5,mileage:17,performance:8,safety:9,features:9},
+{name:"Toyota Camry",price:48,fuel:"Hybrid",type:"Sedan",seats:5,mileage:19.1,performance:8,safety:10,features:10},
+{name:"Toyota Fortuner Legender",price:44,fuel:"Diesel",type:"SUV",seats:7,mileage:14.4,performance:9,safety:9,features:9},
+{name:"Kia Carnival",price:63,fuel:"Diesel",type:"MPV",seats:7,mileage:13.9,performance:8,safety:9,features:10},
+{name:"BYD Atto 3",price:25,fuel:"Electric",type:"SUV",seats:5,mileage:521,performance:8,safety:9,features:9},
+{name:"BYD Seal",price:42,fuel:"Electric",type:"Sedan",seats:5,mileage:580,performance:10,safety:10,features:10},
+{name:"BYD Sealion 7",price:50,fuel:"Electric",type:"SUV",seats:5,mileage:567,performance:9,safety:10,features:10},
+{name:"Hyundai Ioniq 5",price:46,fuel:"Electric",type:"SUV",seats:5,mileage:631,performance:9,safety:10,features:10},
+{name:"Kia EV6",price:65,fuel:"Electric",type:"SUV",seats:5,mileage:528,performance:10,safety:10,features:10},
+{name:"Volvo XC40 Recharge",price:56,fuel:"Electric",type:"SUV",seats:5,mileage:418,performance:8,safety:10,features:10},
+{name:"Volvo EX30",price:46,fuel:"Electric",type:"SUV",seats:5,mileage:480,performance:8,safety:10,features:10},
+{name:"Volvo XC60",price:71,fuel:"Petrol",type:"SUV",seats:5,mileage:12.4,performance:8,safety:10,features:10},
+{name:"Volvo XC90",price:103.0,fuel:"Petrol",type:"SUV",seats:7,mileage:11,performance:9,safety:10,features:10},
+{name:"Volvo S90",price:68,fuel:"Petrol",type:"Sedan",seats:5,mileage:14,performance:8,safety:10,features:10},
+{name:"BMW 2 Series Gran Coupe",price:46,fuel:"Petrol",type:"Sedan",seats:5,mileage:16,performance:8,safety:9,features:10},
+{name:"BMW 3 Series",price:62,fuel:"Petrol",type:"Sedan",seats:5,mileage:15,performance:9,safety:10,features:10},
+{name:"BMW 5 Series",price:74,fuel:"Petrol",type:"Sedan",seats:5,mileage:15,performance:9,safety:10,features:10},
+{name:"BMW 7 Series",price:182.0,fuel:"Petrol",type:"Sedan",seats:5,mileage:12,performance:10,safety:10,features:10},
+{name:"BMW X1",price:50,fuel:"Petrol",type:"SUV",seats:5,mileage:16.3,performance:8,safety:10,features:10},
+{name:"BMW X3",price:72,fuel:"Petrol",type:"SUV",seats:5,mileage:13.8,performance:9,safety:10,features:10},
+{name:"BMW X5",price:97,fuel:"Petrol",type:"SUV",seats:5,mileage:12,performance:10,safety:10,features:10},
+{name:"BMW X7",price:130.0,fuel:"Petrol",type:"SUV",seats:7,mileage:11.2,performance:10,safety:10,features:10},
+{name:"BMW i4",price:72,fuel:"Electric",type:"Sedan",seats:5,mileage:590,performance:10,safety:10,features:10},
+{name:"BMW i5",price:120.0,fuel:"Electric",type:"Sedan",seats:5,mileage:516,performance:10,safety:10,features:10},
+{name:"BMW i7",price:204.99999999999997,fuel:"Electric",type:"Sedan",seats:5,mileage:560,performance:10,safety:10,features:10},
+{name:"BMW iX",price:140.0,fuel:"Electric",type:"SUV",seats:5,mileage:425,performance:9,safety:10,features:10},
+{name:"Mercedes-Benz A-Class Limousine",price:46,fuel:"Petrol",type:"Sedan",seats:5,mileage:17.5,performance:8,safety:9,features:10},
+{name:"Mercedes-Benz C-Class",price:58,fuel:"Petrol",type:"Sedan",seats:5,mileage:16.9,performance:9,safety:10,features:10},
+{name:"Mercedes-Benz E-Class",price:80,fuel:"Petrol",type:"Sedan",seats:5,mileage:15,performance:9,safety:10,features:10},
+{name:"Mercedes-Benz S-Class",price:180.0,fuel:"Petrol",type:"Sedan",seats:5,mileage:13,performance:10,safety:10,features:10},
+{name:"Mercedes-Benz GLA",price:51,fuel:"Petrol",type:"SUV",seats:5,mileage:17.4,performance:8,safety:10,features:10},
+{name:"Mercedes-Benz GLC",price:76,fuel:"Petrol",type:"SUV",seats:5,mileage:14,performance:9,safety:10,features:10},
+{name:"Mercedes-Benz GLE",price:105.0,fuel:"Petrol",type:"SUV",seats:5,mileage:11.5,performance:10,safety:10,features:10},
+{name:"Mercedes-Benz GLS",price:135.0,fuel:"Petrol",type:"SUV",seats:7,mileage:10,performance:10,safety:10,features:10},
+{name:"Mercedes-Benz EQB",price:71,fuel:"Electric",type:"SUV",seats:7,mileage:447,performance:8,safety:10,features:10},
+{name:"Mercedes-Benz EQE",price:110.00000000000001,fuel:"Electric",type:"Sedan",seats:5,mileage:550,performance:9,safety:10,features:10},
+{name:"Mercedes-Benz EQS",price:160.0,fuel:"Electric",type:"Sedan",seats:5,mileage:580,performance:10,safety:10,features:10},
+{name:"Audi A4",price:47,fuel:"Petrol",type:"Sedan",seats:5,mileage:17.4,performance:8,safety:9,features:10},
+{name:"Audi A6",price:70,fuel:"Petrol",type:"Sedan",seats:5,mileage:14.1,performance:9,safety:10,features:10},
+{name:"Audi A8 L",price:135.0,fuel:"Petrol",type:"Sedan",seats:5,mileage:12,performance:10,safety:10,features:10},
+{name:"Audi Q3",price:44,fuel:"Petrol",type:"SUV",seats:5,mileage:15.9,performance:8,safety:9,features:10},
+{name:"Audi Q5",price:65,fuel:"Petrol",type:"SUV",seats:5,mileage:13.5,performance:9,safety:10,features:10},
+{name:"Audi Q7",price:90,fuel:"Petrol",type:"SUV",seats:7,mileage:11.2,performance:10,safety:10,features:10},
+{name:"Audi Q8",price:110.00000000000001,fuel:"Petrol",type:"SUV",seats:5,mileage:10.5,performance:10,safety:10,features:10},
+{name:"Audi e-tron GT",price:170.0,fuel:"Electric",type:"Sedan",seats:5,mileage:487,performance:10,safety:10,features:10},
+{name:"Porsche Macan",price:100.0,fuel:"Electric",type:"SUV",seats:5,mileage:516,performance:10,safety:10,features:10},
+{name:"Porsche Cayenne",price:136.0,fuel:"Petrol",type:"SUV",seats:5,mileage:10,performance:10,safety:10,features:10},
+{name:"Porsche 911",price:200.0,fuel:"Petrol",type:"Sedan",seats:2,mileage:8,performance:10,safety:9,features:10},
+{name:"Porsche Taycan",price:190.0,fuel:"Electric",type:"Sedan",seats:4,mileage:452,performance:10,safety:10,features:10},
+{name:"Land Rover Defender",price:98,fuel:"Petrol",type:"SUV",seats:7,mileage:9,performance:10,safety:10,features:10},
+{name:"Range Rover Evoque",price:68,fuel:"Petrol",type:"SUV",seats:5,mileage:12.5,performance:8,safety:10,features:10},
+{name:"Range Rover Sport",price:140.0,fuel:"Petrol",type:"SUV",seats:5,mileage:10,performance:10,safety:10,features:10},
+{name:"Range Rover",price:240.0,fuel:"Petrol",type:"SUV",seats:7,mileage:9,performance:10,safety:10,features:10},
+{name:"Jaguar F-Pace",price:74,fuel:"Petrol",type:"SUV",seats:5,mileage:12,performance:9,safety:9,features:10},
+{name:"Lexus ES",price:65,fuel:"Hybrid",type:"Sedan",seats:5,mileage:22.6,performance:8,safety:10,features:10},
+{name:"Lexus NX",price:65,fuel:"Hybrid",type:"SUV",seats:5,mileage:17.8,performance:8,safety:10,features:10},
+{name:"Lexus LM",price:120.0,fuel:"Petrol",type:"MPV",seats:7,mileage:8.5,performance:8,safety:10,features:10},
+{name:"Mini Cooper",price:44,fuel:"Petrol",type:"Hatchback",seats:4,mileage:16,performance:9,safety:9,features:10},
+{name:"Mini Countryman",price:48,fuel:"Petrol",type:"SUV",seats:5,mileage:16,performance:8,safety:9,features:10},
+{name:"Jeep Wrangler",price:68,fuel:"Petrol",type:"SUV",seats:5,mileage:10.6,performance:10,safety:9,features:9},
+{name:"Jeep Grand Cherokee",price:80,fuel:"Petrol",type:"SUV",seats:5,mileage:11.6,performance:9,safety:10,features:10},
+{name:"Maserati Grecale",price:135.0,fuel:"Petrol",type:"SUV",seats:5,mileage:9.5,performance:9,safety:9,features:10},
+{name:"Maserati GranTurismo",price:250.0,fuel:"Petrol",type:"Sedan",seats:4,mileage:8,performance:10,safety:9,features:10},
+{name:"Lamborghini Urus",price:450.0,fuel:"Petrol",type:"SUV",seats:5,mileage:7.8,performance:10,safety:9,features:10},
+{name:"Ferrari Roma",price:376.0,fuel:"Petrol",type:"Sedan",seats:2,mileage:8,performance:10,safety:9,features:10},
+{name:"Ferrari 296 GTB",price:540.0,fuel:"Petrol",type:"Sedan",seats:2,mileage:7.5,performance:10,safety:9,features:10},
+{name:"McLaren Artura",price:509.99999999999994,fuel:"Petrol",type:"Sedan",seats:2,mileage:8.7,performance:10,safety:9,features:10},
+{name:"Aston Martin DB12",price:440.00000000000006,fuel:"Petrol",type:"Sedan",seats:2,mileage:8,performance:10,safety:9,features:10},
+{name:"Bentley Continental GT",price:550.0,fuel:"Petrol",type:"Sedan",seats:4,mileage:7.5,performance:10,safety:10,features:10},
+{name:"Bentley Bentayga",price:500.0,fuel:"Petrol",type:"SUV",seats:5,mileage:8,performance:10,safety:10,features:10},
+{name:"Rolls-Royce Ghost",price:894.9999999999999,fuel:"Petrol",type:"Sedan",seats:5,mileage:6.5,performance:10,safety:10,features:10},
+{name:"Rolls-Royce Cullinan",price:1050.0,fuel:"Petrol",type:"SUV",seats:5,mileage:6,performance:10,safety:10,features:10},
+{name:"Rolls-Royce Spectre",price:760.0,fuel:"Electric",type:"Sedan",seats:4,mileage:530,performance:10,safety:10,features:10},
+];
+
+function recommend(){
+ const budget=+document.getElementById("budget").value;
+ const fuel=document.getElementById("fuel").value;
+ const type=document.getElementById("type").value;
+ const priority=document.getElementById("priority").value.toLowerCase();
+ const people=+document.getElementById("people").value;
+ const weights={mileage:"mileage",performance:"performance",safety:"safety",features:"features"};
+ const p=weights[priority];
+ let list=cars.map(c=>{
+   if(c.price>budget*1.35)return {...c,score:-1};
+   let s=0;
+   // Budget fit: strongest influence
+   const diff=Math.abs(c.price-budget)/Math.max(budget,1);
+   s += Math.max(0,20-diff*25);
+   if(fuel==="Any")s+=10; else s += c.fuel===fuel?25:0;
+   if(type==="Any")s+=10; else s += c.type===type?20:0;
+   if(c.seats>=people)s+=10; else s-=15;
+   if(p==="mileage") s+=Math.min(c.mileage/26,1)*15;
+   else s+=c[p]/10*15;
+   return {...c,score:Math.min(99,Math.max(0,Math.round(s)))};
+ }).filter(c=>c.score>=0).sort((a,b)=>b.score-a.score).slice(0,6);
+
+ const cards=document.getElementById("cards");
+ cards.innerHTML=list.map((c,i)=>`
+ <article class="card ${i===0?"best":""}">
+ ${i===0?'<div class="best-tag">BEST MATCH</div>':''}
+ <div class="car-icon">🚘</div>
+ <h3>${c.name}</h3><div class="muted">Estimated starting price: ₹${c.price.toFixed(1)} lakh</div>
+ <div class="score"><div class="scoreline"><span>AI Match Score</span><b>${c.score}%</b></div><div class="bar"><div class="fill" style="width:${c.score}%"></div></div></div>
+ <div class="specs">
+ <div class="spec">⛽ ${c.fuel}</div><div class="spec">🚙 ${c.type}</div>
+ <div class="spec">👥 ${c.seats} seats</div><div class="spec">🛣️ ${c.mileage} ${c.fuel==="Electric"?"km/charge":"km/l"}</div>
+ </div>
+ <div class="reason"><b>Why recommended:</b> ${reason(c,p,budget,fuel,type,people)}</div>
+ </article>`).join("");
+ document.getElementById("count").textContent=`Top ${list.length} matches based on your preferences`;
+ document.getElementById("results").style.display="block";
+ document.getElementById("results").scrollIntoView({behavior:"smooth"});
+}
+function reason(c,p,budget,fuel,type,people){
+ let r=[];
+ if(c.price<=budget)r.push("fits your budget");
+ if(fuel==="Any"||c.fuel===fuel)r.push("matches your fuel preference");
+ if(type==="Any"||c.type===type)r.push("matches your preferred body type");
+ if(c.seats>=people)r.push("has enough seating");
+ if(p==="mileage"&&c.mileage>=20)r.push("offers strong efficiency");
+ if(p==="safety"&&c.safety>=9)r.push("has a strong safety score");
+ if(p==="performance"&&c.performance>=8)r.push("scores well for performance");
+ if(p==="features"&&c.features>=9)r.push("scores highly on features");
+ return r.slice(0,3).join(", ")+".";
+}
+</script>
+</body>
+</html>
